@@ -16,14 +16,13 @@ const parcoursCtrl = {
   
   // Create a parcours in the database
   createParcours(req, res) {
-    const { name, duration, description, price, picture, difficulty } =
+    const { name, duration, description, price, difficulty } =
       req.body;
 
     // Check if evertyhing is good (typeof, unemptiness, regexp validation)
     if (
       typeof name !== "string" ||
-      typeof description !== "string" ||
-      typeof picture !== "string"
+      typeof description !== "string"
     ) {
       return res
         .status(422)
@@ -32,8 +31,7 @@ const parcoursCtrl = {
     if (
       name === "" ||
       duration === "" ||
-      description === "" ||
-      picture === ""
+      description === ""
     ) {
       return res
         .status(422)
@@ -41,7 +39,7 @@ const parcoursCtrl = {
     }
 
     let parcoursSlug = name.toLowerCase();
-    parcoursSlug = parcoursSlug.replace(" ", "-");
+    parcoursSlug = parcoursSlug.replaceAll(" ", "-");
 
     let imgPath = "/uploads/"+req.file.filename;
 
@@ -71,6 +69,7 @@ const parcoursCtrl = {
   // Update a parcours according to the new informations
   async updateParcours(req, res) {
     const body = req.body;   
+    console.log(body);
 
     const parcours = await parcoursModel.findOne({slug: body.slug}).exec();
     if (!parcours) {
@@ -83,17 +82,27 @@ const parcoursCtrl = {
       parcours.slug = body.name.toLowerCase().replaceAll(" ", "-")
     }
 
-    parcours.duration = body.duration ?? parcours.duration;
-    parcours.description = body.description ?? parcours.description;
-    parcours.price = body.price ?? parcours.price;
-    parcours.picture = body.picture ?? parcours.picture;
-    parcours.difficulty = body.difficulty ?? parcours.difficulty;
+    if (req.file) {
+      parcours.parcoursPicture = "/uploads/"+req.file.filename;
+    }
+    if (body.duration) {
+      parcours.duration = body.duration;
+    }
+    if (body.description) {
+      parcours.description = body.description;
+    }
+    if (body.price) {
+      parcours.price = body.price;
+    }
+    if (body.difficulty) {
+      parcours.difficulty = body.difficulty;
+    }
 
     // Update the parcours
 
     try {
       await parcours.save();
-      return res.status(200).json({ message: "Parcours modifié" });
+      return res.status(200).json({ status: 200, message: "Parcours modifié" });
     } catch(e) {
       return res
       .status(500)
@@ -116,22 +125,22 @@ const parcoursCtrl = {
 
   // Create a step in the parcours
   async createStep(req, res) {
-    const { slug, stepName, stepLatitude, stepLongitude, stepDescription } = req.body;
-
+    //const { slug, stepName, stepLatitude, stepLongitude, stepDescription } = req.body;
+    console.log (req.body);
     // Update the slug pertaining to the new name
-    let stepSlug = stepName.toLowerCase().replaceAll(" ", "-");
+    let stepSlug = req.body.stepName.toLowerCase().replaceAll(" ", "-");
 
     let imgPath = "/uploads/"+req.file.filename;
 
     // Update the slug pertaining to the new name
-    const newStep = await parcoursModel.updateOne({slug: slug}, {
+    const newStep = await parcoursModel.updateOne({slug: req.body.slug}, {
       $push: { 
         steps:{
-          stepName: stepName, 
-          stepLatitude: stepLatitude,
-          stepLongitude: stepLongitude,
+          stepName: req.body.stepName, 
+          stepLatitude: req.body.stepLatitude,
+          stepLongitude: req.body.stepLongitude,
           stepPicture: imgPath,
-          stepDescription: stepDescription,
+          stepDescription: req.body.stepDescription,
           stepSlug: stepSlug
       }}}, {new: true, upsert:true});
   
@@ -147,30 +156,40 @@ const parcoursCtrl = {
     // Update a step in the parcours
   async updateStep(req, res) {
     const body = req.body; 
-
+    console.log(body);
+    console.log(body);
+    console.log(req.file);
     // Look if the step exists
-    const parcoursStep = await parcoursModel.findOne ({steps: { $elemMatch: { stepSlug: body.slug } } }).exec();
-    console.log("parcoursStep");
-    console.log(parcoursStep);
+    const parcoursStep = await parcoursModel.findOne ({steps: { $elemMatch: { stepSlug: body.stepSlug } } }).exec();
+    if (!parcoursStep) {
+      return res.status(422).json({message:"L'opération n'a pas pu être effectuée"});
+    }
 
     if (body.name) {
       parcoursStep.name = body.name;
       parcoursStep.slug = body.name.toLowerCase().replaceAll(" ", "-")
     }
 
-    if (body.stepPicture) {
+    if (req.file) {
+      console.log("stepPicturee");
       parcoursStep.stepPicture = "/uploads/"+req.file.filename;
     }
-
-    parcoursStep.stepLatitude = body.stepLatitude ?? parcoursStep.stepLatitude;
-    parcoursStep.stepLongitude = body.stepLongitude ?? parcoursStep.stepLongitude;
-    parcoursStep.stepDescription = body.stepDescription ?? parcoursStep.stepDescription;
+    if (body.latitude) {
+      parcoursStep.stepLatitude = body.latitude;
+    }
+    if (body.longitude) {
+      parcoursStep.stepLongitude = body.longitude;
+    }
+    if (body.description) {
+      parcoursStep.stepDescription = body.description;
+    }
 
     // Update the step (TO-DO)
     try {
       await parcoursStep.save();
-      return res.status(200).json({ message: "Etape modifiée" });
+      return res.status(200).json({ status: 200, message: "Etape modifiée" });
     } catch(e) {
+      console.log(e);
       return res
       .status(500)
       .json({ message: "Une erreur inattendue s'est produite" });
@@ -207,8 +226,7 @@ const parcoursCtrl = {
     return res.json(parcours);
   },
   async getSingleParcoursById(req, res) {
-    let parcoursID = req.params.id.slice(4);
-    const parcours = await parcoursModel.findOne ({_id: parcoursID}).exec();
+    const parcours = await parcoursModel.findOne ({_id: req.params.id}).exec();
     if (!parcours) {
         return res.status(422).json({message:"L'opération n'a pas pu être effectuée"});
     }
