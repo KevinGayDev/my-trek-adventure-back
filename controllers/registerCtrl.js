@@ -7,7 +7,7 @@ const userModel = require ("../models/usersModel");
 const mwUploadImage = require("../middlewares/uploadImageMw");
 
 const mailRegExp = new RegExp("^[a-zA-Z0-9_!#$%&amp;'*+/=?`{|}~^-]+(?:\\.[a-zA-Z0-9_!#$%&amp;'*+/=?`{|}~^-]+)*@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*$");
-const passwordRegExp = new RegExp("^(.*[a-zA-Z0-9!@#$%^&*])$");
+const passwordRegExp = new RegExp("^(.*[a-zA-Z0-9!@#$%^&*]){1,16}$");
 
 const registerCtrl = 
 {
@@ -15,14 +15,19 @@ const registerCtrl =
         const {mail, password} = req.body;
 
         // Check if evertyhing is good (typeof, unemptiness, regexp validation)
-        if (typeof(mail) !== "string" || typeof(password) !== "string") {
+        if (typeof mail !== "string" || typeof password !== "string") {
             return res.status(422).json({message: "Un ou plusieurs champs ne sont pas du bon type"});
         }
         if (mail === "" || password === "") {
             return res.status(422).json({message: "Un ou plusieurs champs sont vides"});
         }
-        if (!mailRegExp.test(mail) || !passwordRegExp.test(password)) {
+        if (!mailRegExp.test(mail) ) {
             return res.status(422).json({message: "Adresse mail ou mot de passe incorrect"});
+        }
+
+        if (!passwordRegExp.test(password)) {
+            console.log(passwordRegExp.test(password));
+            return res.status(422).json({message: "Votre mot de passe doit comporter au moins 4 caractères avec 1 lettre, 1 chiffre et 1 caractère spécial"});
         }
 
         // Encrypt password to database
@@ -45,20 +50,25 @@ const registerCtrl =
             return res.status(201).json({message: "Compte crée"});
         })
         .catch((err)=> {
+            console.log(err);
             return res.status(422).json({message:"Une erreur inattendue est survenue"}); 
         })
     },
     registerGuide (req, res) {
         const {firstName, lastName, mail, password, description, experienceYears} = req.body;
 
-        if (typeof(firstName) !== "string" || typeof(lastName) !== "string" || typeof(mail) !== "string" || typeof(password) !== "string" || typeof(description) !== "string") {
+        if (typeof firstName !== "string" || typeof lastName !== "string" || typeof mail !== "string" || typeof password !== "string" || typeof description !== "string") {
             return res.status(422).json({message: "Un ou plusieurs champs ne sont pas du bon type"})
         }
         if (firstName === "" || lastName === "" || mail === "" || password === "" || description === "") {
             return res.status(422).json({message: "Un ou plusieurs champs sont vides"})
         }
-        if (!mailRegExp.test(mail) || !passwordRegExp.test(password)) {
+        if (!mailRegExp.test(mail) ) {
             return res.status(422).json({message: "Adresse mail ou mot de passe incorrect"});
+        }
+
+        if (!passwordRegExp.test(password)) {
+            return res.status(422).json({message: "Votre mot de passe doit comporter au moins 4 caractères avec 1 lettre, 1 chiffre et 1 caractère spécial"});
         }
 
         // Encrypt password to database
@@ -96,16 +106,19 @@ const registerCtrl =
         })
     },
     registerUser (req, res) {
+        console.log(req.body)
         const {firstName, lastName, mail, password} = req.body;
-console.log("req.body", req.body, req.file)
         if (typeof(firstName) !== "string" || typeof(lastName) !== "string" || typeof(mail) !== "string" || typeof(password) !== "string") {
             return res.status(422).json({message: "Un ou plusieurs champs ne sont pas du bon type"})
         }
         if (firstName === "" || lastName === "" || mail === "" || password === "") {
             return res.status(422).json({message: "Un ou plusieurs champs sont vides"})
         }
-        if (!mailRegExp.test(mail) || !passwordRegExp.test(password)) {
+        if (!mailRegExp.test(mail) ) {
             return res.status(422).json({message: "Adresse mail ou mot de passe incorrect"});
+        }
+        if (!passwordRegExp.test(password)) {
+             return res.status(422).json({message: "Votre mot de passe doit comporter au moins 4 caractères avec 1 lettre, 1 chiffre et 1 caractère spécial"});
         }
 
         // Encrypt password to database
@@ -119,7 +132,14 @@ console.log("req.body", req.body, req.file)
         let userSlug = firstName + lastName;
         userSlug = userSlug.toLowerCase().replaceAll(" ", "-");
 
-        let imgPath = "/uploads/"+req.file.filename;
+
+        let imgPath
+
+        if (req.file) {
+             imgPath = "/uploads/"+req.file.filename;
+        }   else {
+             imgPath = "/uploads/dummy.png";
+        }
 
         // Save guide to the guides database
         let newUser = new userModel({
